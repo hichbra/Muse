@@ -14,19 +14,12 @@ tf.set_random_seed(RANDOM_SEED)
 """""""""""""""""""""''''''""""""""""""""""""""""""
 """""""""""" MISE EN PLACE DES DONNEES """"""""""""
 """""""""""""""""""""''''''""""""""""""""""""""""""
-# Beta = 18 19
-# Gamma = 22 23
-my_data = genfromtxt('/home/hicham/Bureau/Stage/Dataset/dataset_1/datasetAssisMD.csv', delimiter=';')
-input_signal = np.reshape(my_data[:,4:5].T, -1, 2) # 2eme colonne
-capteur = np.reshape(my_data[:,27:28].T, -1, 2)
-capteur[capteur > 30] = 100
-capteur[capteur <= 30] = 0
 
-SIZE = len(input_signal)
-print(SIZE)
+my_data = genfromtxt('/home/hicham/Bureau/extraitTest', delimiter=' ')
+input_signal = np.reshape(my_data[:,3:].T, -1, 2)
+
 # Frequence d'echantillonnage fs=333.333 Hz
 # Filtre passe bande [1 10] Hz et d'ordre 4
-# ou [0.5 30]
 FiltreMin = 1
 FiltreMax = 10
 fs = 333.333
@@ -38,21 +31,11 @@ output_signal = signal.filtfilt(b, a, input_signal)
 
 sortie = np.zeros((input_signal.shape[0],2))
 
-#sortie = capteur
-for i in range(input_signal.shape[0]):
-    sortie[i][0] = output_signal[i]
-    #print("yoooooooooooooooooooooooooooooooooooooooooooo",capteur[i])
-    if capteur[i] == 100:
-        sortie[i][1] = 1
-print("Sortie = ",sortie)
-"""
-sortie = np.zeros((input_signal.shape[0],2))
-
 for i in range(input_signal.shape[0]):
     sortie[i][0] = output_signal[i]
     if output_signal[i] > 4:
         sortie[i][1] = 1
-"""
+
 """"""""""""""""""""""""""""""""""""""""""""""""""""""
 """"""""""""""""""""""""""""""""""""""""""""""""""""""
 """"""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -83,12 +66,11 @@ def get_data():
     #print( "sortie = ",sortie[1:5])
 
     """ Creation des fenetres temporelles """
-    TAILLE_FENETRE = 70 # 16
+    TAILLE_FENETRE = 8 # 16
 
     dataset = np.zeros((input_signal.shape[0]-TAILLE_FENETRE, TAILLE_FENETRE+1)) # +1 pour la sortie desire
 
-    #cpt = 0
-    for i in range(SIZE-TAILLE_FENETRE):
+    for i in range(256-TAILLE_FENETRE):
         cpt = i
         for j in range(TAILLE_FENETRE):
             dataset[i][j] = sortie[cpt][0]
@@ -118,7 +100,7 @@ def get_data():
 
     print(all_X.shape)
     print(all_Y.shape)
-    return train_test_split(all_X, all_Y, train_size=0.6, test_size=0.4, random_state=RANDOM_SEED)
+    return train_test_split(all_X, all_Y, test_size=0.1, random_state=RANDOM_SEED)
 
 def main():
 
@@ -129,9 +111,9 @@ def main():
     train_X, test_X, train_y, test_y = get_data()
 
     # Layer's sizes
-    x_size = train_X.shape[1]
-    h_size = 70
-    y_size = train_y.shape[1]
+    x_size = train_X.shape[1]   # Number of input nodes: 4 features and 1 bias
+    h_size = 8                # Number of hidden nodes
+    y_size = train_y.shape[1]   # Number of outcomes (3 iris flowers)
 
     # Symbols
     global X
@@ -151,7 +133,7 @@ def main():
 
     # Backward propagation
     cost    = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=yhat))
-    updates = tf.train.GradientDescentOptimizer(0.001).minimize(cost)
+    updates = tf.train.GradientDescentOptimizer(0.01).minimize(cost)
 
     # Save
     saver = tf.train.Saver()
@@ -167,7 +149,7 @@ def main():
     print(train_X[0:1])
 
     yep = 0 ;
-    for epoch in range(150):
+    for epoch in range(20):
         # Train with each example
         for i in range(len(train_X)):
             sess.run(updates, feed_dict={X: train_X[i: i + 1], y: train_y[i: i + 1]})
@@ -184,96 +166,66 @@ def main():
               % (epoch + 1, 100. * train_accuracy, 100. * test_accuracy))
 
     # Save
-
-    #saver.save(sess, 'Graph/EEG/l_ear/l_ear')
-    #saver.save(sess, 'Graph/EEG/l_forehead/l_forehead')
-    #saver.save(sess, 'Graph/EEG/r_forehead/r_forehead')
-    saver.save(sess, 'Graph/EEG/r_ear/r_ear')
-
-    #saver.save(sess, 'Graph/EEG/BETA/l_ear/l_ear')
-    #saver.save(sess, 'Graph/EEG/BETA/l_forehead/l_forehead')
-    #saver.save(sess, 'Graph/EEG/BETA/r_forehead/r_forehead')
-    #saver.save(sess, 'Graph/EEG/BETA/r_ear/r_ear')
-
-    #saver.save(sess, 'Graph/EEG/GAMMA/l_ear/l_ear')
-    #saver.save(sess, 'Graph/EEG/GAMMA/l_forehead/l_forehead')
-    #saver.save(sess, 'Graph/EEG/GAMMA/r_forehead/r_forehead')
-    #saver.save(sess, 'Graph/EEG/GAMMA/r_ear/r_ear')
+    saver.save(sess, 'Graph/monModel')
 
     print(yep)
 
 if __name__ == '__main__':
     main()
 
-    ECHELLE_PREDICTION = 200
-    ECHELLE_SORTIE = 100
+    sortie[sortie == 1,] = 20
+    sortie = np.delete(sortie, 0, 1)
 
-    """ Creation des fenetres temporelles """
-    #my_data = genfromtxt('/home/hicham/Bureau/Stage/Dataset/dataset_1/datasetAssisMD2.csv', delimiter=';')
+    plt.plot(input_signal, label='Signal')
+    plt.plot(output_signal, label='Signal filtre')
+    plt.plot(sortie,  label='Prediction')
 
-    SIZE = len(input_signal)
-    capteur = np.reshape(my_data[:,27:28].T, -1, 2)
-    for i in range(len(capteur)):
-        if capteur[i] > 30:
-            capteur[i] = ECHELLE_SORTIE
-        else:
-             capteur[i] = 0
+    plt.legend(bbox_to_anchor=(0.88, 0.88), loc=3, borderaxespad=0.)
 
-    sortie_Random = np.zeros((input_signal.shape[0],2))
+    """ TEST SUR UN SIGNAL RANDOM """"""
+    input_signal_Random = np.random.normal(-10,10,256)
+    output_signal_Random = signal.filtfilt(b, a, input_signal_Random)
 
-    TAILLE_FENETRE = 70 # 16
-    output_signal_Random = signal.filtfilt(b, a, input_signal)
+    sortie_Random = np.zeros((input_signal_Random.shape[0],2))
 
-
-    for i in range(input_signal.shape[0]):
+    for i in range(input_signal_Random.shape[0]):
         sortie_Random[i][0] = output_signal_Random[i]
-        if capteur[i] == ECHELLE_SORTIE:
+        if output_signal_Random[i] > 4:
             sortie_Random[i][1] = 1
 
+    """""" Creation des fenetres temporelles """"""
+    TAILLE_FENETRE = 8 # 16
 
-    dataset_RANDOM = np.zeros((input_signal.shape[0]-TAILLE_FENETRE, TAILLE_FENETRE+1)) # +1 pour la sortie desire
-    for i in range(SIZE-TAILLE_FENETRE):
-        cpt = i
-        for j in range(TAILLE_FENETRE):
-            dataset_RANDOM[i][j] = sortie_Random[cpt][0]
-            cpt = cpt+1
+    dataset_RANDOM = np.zeros((input_signal_Random.shape[0]/TAILLE_FENETRE, TAILLE_FENETRE+1)) # +1 pour la sortie desire
 
-        dataset_RANDOM[i][TAILLE_FENETRE] = sortie_Random[cpt][1]
+    cpt = 0
+    for i in range(256/TAILLE_FENETRE):
+        for j in range(TAILLE_FENETRE+1):
+            if j == 0:
+                dataset_RANDOM[i][j] = 1
+            else:
+                dataset_RANDOM[i][j] = sortie_Random[cpt][0]
+                cpt = cpt+1
 
     data = dataset_RANDOM[0:dataset_RANDOM.shape[0],0:TAILLE_FENETRE+1]
 
     prediction_de_la_mort = []
-    prediction_de_la_mort_qui_tue = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+    prediction_de_la_mort_qui_tue = []
 
     for i in range(data.shape[0]):
-        fenetre_a_predire = data[i].reshape((1, TAILLE_FENETRE+1))
+        fenetre_a_predire = data[i].reshape((1, 9))
         prediction_de_la_mort.append(sess.run(predict, feed_dict={X: fenetre_a_predire})[0])
 
-    print("TAILLE",len(prediction_de_la_mort))
-
     for i in range(len(prediction_de_la_mort)):
-        #for j in range(TAILLE_FENETRE):
-        prediction_de_la_mort_qui_tue.append(prediction_de_la_mort[i])
+        for j in range(TAILLE_FENETRE):
+            prediction_de_la_mort_qui_tue.append(prediction_de_la_mort[i])
 
-    plt.plot(input_signal, label='Signal')
+    plt.plot(input_signal_Random, label='Signal')
     plt.plot(output_signal_Random, label='Signal filtre')
 
-    prediction_de_la_mort_qui_tue = [ECHELLE_PREDICTION if x==1 else x for x in prediction_de_la_mort_qui_tue]
+    prediction_de_la_mort_qui_tue = [20 if x==1 else x for x in prediction_de_la_mort_qui_tue]
     plt.plot(prediction_de_la_mort_qui_tue, label='Prediction')
-
-    sortie = np.zeros((input_signal.shape[0],2))
-
-    # Sortie a predire
-    for i in range(input_signal.shape[0]):
-        sortie[i][0] = output_signal_Random[i]
-
-        if capteur[i] == ECHELLE_SORTIE:
-            sortie[i][1] = 1
-    sortie[sortie == 1,] = ECHELLE_SORTIE
-    sortie = np.delete(sortie, 0, 1)
-    plt.plot(sortie,  label='Sortie')
     plt.legend(bbox_to_anchor=(0.88, 0.88), loc=3, borderaxespad=0.)
 
-
-
+    """
     plt.show()

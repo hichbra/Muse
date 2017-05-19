@@ -1,9 +1,19 @@
+# -*- coding: latin-1 -*-
+
 # https://www.lri.fr/~antoine/Courses/Master-ISI/Tr-boosting-06x4.pdf
 
 # https://www.lri.fr/~antoine/Courses/Master-ISI/section-boosting.pdf
-
 from __future__ import division
 import numpy as np
+
+from scipy import signal
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+from numpy import genfromtxt
+import csv
+import tensorflow as tf
+from sklearn import datasets
+from sklearn.model_selection import train_test_split
 
 """
 AdaBoost
@@ -62,6 +72,8 @@ class AdaBoostHalf:
 
     def set_rule(self, func, test=False):
         errors = np.array([t[1]!=func(t[0]) for t in self.training_set]) # Evaluation de la regle de decision
+        print("Func", func)
+        print("Errors", errors)
 
         e = (errors*self.weights).sum()
         if test:
@@ -90,10 +102,23 @@ class AdaBoostHalf:
             print (x, np.sign(l) == np.sign(sum(hx)))
 
 
+def functionname(x):
+    # Ici on met le modele predictif
+    # retourne 1 si vrai / -1 si faux
+    print("functionname",x )
+    return 1
+
 if __name__ == '__main__':
 
     examples = []
-    examples.append(((1,  2  ), 1))
+    """
+    examples.append(([[22.82389868, 24.12099087, 25.44874231]], 1))
+    examples.append(([[52.8238, 24.12099087, 2245.44874231]], -1))
+    examples.append(([[656.89868, 224.12099087, 25.44874231]], -1))
+    """
+
+
+    #examples.append(((1,  2  ), 1))
     examples.append(((1,  4  ), 1))
     examples.append(((2.5,5.5), 1))
     examples.append(((3.5,6.5), 1))
@@ -104,8 +129,16 @@ if __name__ == '__main__':
     examples.append(((5,  2  ),-1))
     examples.append(((5,  5.5),-1))
 
+
     m = AdaBoostHalf(examples)
-    m.set_rule(lambda x: 2*(x[0] < 1.5)-1) # Here some thresolds are used to form a sort of decision tree
+    """
+    m.set_rule(lambda x: functionname(x))
+    m.set_rule(lambda x: functionname(x))
+    m.set_rule(lambda x: functionname(x))
+    m.set_rule(lambda x: functionname(x))
+    """
+    #m.set_rule(lambda x: 2*(x[0] < 1.5)-1) # Here some thresolds are used to form a sort of decision tree
     m.set_rule(lambda x: 2*(x[0] < 4.5)-1)
     m.set_rule(lambda x: 2*(x[1] > 5)-1)
+
     m.evaluate()
