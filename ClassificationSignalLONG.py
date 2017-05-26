@@ -16,14 +16,23 @@ tf.set_random_seed(RANDOM_SEED)
 """""""""""""""""""""''''''""""""""""""""""""""""""
 # Beta = 18 19
 # Gamma = 22 23
-my_data = genfromtxt('/home/hicham/Bureau/Stage/Dataset/dataset_3/datasetLong4.csv', delimiter=';')
-input_signal = np.reshape(my_data[:,1:2].T, -1, 2) # 2eme colonne
-capteur = np.reshape(my_data[:,27:28].T, -1, 2)
+my_data = genfromtxt('/home/hicham/Bureau/Stage/Dataset/dataset_3/datasetLong1.csv', delimiter=';')
+input_signal = np.reshape(my_data[:,4:5].T, -1, 2) # 2eme colonne
+my_data2 = genfromtxt('/home/hicham/Bureau/Stage/Dataset/dataset_3/datasetLong2.csv', delimiter=';')
+input_signal2 = np.reshape(my_data2[:,4:5].T, -1, 2) # 2eme colonne
+my_data3 = genfromtxt('/home/hicham/Bureau/Stage/Dataset/dataset_3/datasetLong4.csv', delimiter=';')
+input_signal3 = np.reshape(my_data3[:,4:5].T, -1, 2) # 2eme colonne
+
+capteur1 = np.reshape(my_data[:,27:28].T, -1, 2)
+capteur2 = np.concatenate((capteur1, np.reshape(my_data2[:,27:28].T, -1, 2)), axis=0)
+capteur = np.concatenate((capteur2, np.reshape(my_data3[:,27:28].T, -1, 2)), axis=0)
+
 capteur[capteur > 30] = 100
 capteur[capteur <= 30] = 0
-
-SIZE = len(input_signal)
-print(SIZE)
+SIZE1 = len(input_signal)
+SIZE2 = len(input_signal2)
+SIZE3 = len(input_signal3)
+#print(SIZE)
 # Frequence d'echantillonnage fs=333.333 Hz
 # Filtre passe bande [1 10] Hz et d'ordre 4
 # ou [0.5 30]
@@ -35,8 +44,10 @@ Wn = [[2*FiltreMin/fs], [2*FiltreMax/fs]]
 # b, a = signal.butter(1, 10, 'low', analog=True)
 b, a = signal.butter(4,  Wn, 'bandpass')
 output_signal = signal.filtfilt(b, a, input_signal)
+output_signal2 = signal.filtfilt(b, a, input_signal2)
+output_signal3 = signal.filtfilt(b, a, input_signal3)
 
-sortie = np.zeros((input_signal.shape[0],2))
+sortie = np.zeros((input_signal.shape[0]+input_signal2.shape[0]+input_signal3.shape[0],2))
 
 #sortie = capteur
 for i in range(input_signal.shape[0]):
@@ -44,6 +55,24 @@ for i in range(input_signal.shape[0]):
     #print("yoooooooooooooooooooooooooooooooooooooooooooo",capteur[i])
     if capteur[i] == 100:
         sortie[i][1] = 1
+j = 0
+for i in range(input_signal.shape[0],input_signal2.shape[0]+input_signal.shape[0]):
+    sortie[i][0] = output_signal2[j]
+    #print("yoooooooooooooooooooooooooooooooooooooooooooo",capteur[i])
+    if capteur[i] == 100:
+        sortie[i][1] = 1
+    j=j+1
+
+j = 0
+for i in range(input_signal.shape[0]+input_signal2.shape[0], input_signal3.shape[0]+input_signal.shape[0]+input_signal2.shape[0]):
+    sortie[i][0] = output_signal3[j]
+    #print("yoooooooooooooooooooooooooooooooooooooooooooo",capteur[i])
+    if capteur[i] == 100:
+        sortie[i][1] = 1
+    j=j+1
+
+
+
 print("Sortie = ",sortie)
 """
 sortie = np.zeros((input_signal.shape[0],2))
@@ -85,16 +114,33 @@ def get_data():
     """ Creation des fenetres temporelles """
     TAILLE_FENETRE = 70 # 16
 
-    dataset = np.zeros((input_signal.shape[0]-TAILLE_FENETRE, TAILLE_FENETRE+1)) # +1 pour la sortie desire
+    dataset = np.zeros(((SIZE1-TAILLE_FENETRE)+(SIZE2-TAILLE_FENETRE)+(SIZE3-TAILLE_FENETRE), TAILLE_FENETRE+1)) # +1 pour la sortie desire
 
     #cpt = 0
-    for i in range(SIZE-TAILLE_FENETRE):
+    for i in range(SIZE1-TAILLE_FENETRE):
         cpt = i
         for j in range(TAILLE_FENETRE):
             dataset[i][j] = sortie[cpt][0]
             cpt = cpt+1
 
         dataset[i][TAILLE_FENETRE] = sortie[cpt][1]
+
+    for i in range((SIZE1-TAILLE_FENETRE),(SIZE1-TAILLE_FENETRE)+(SIZE2-TAILLE_FENETRE)):
+        cpt = i
+        for j in range(TAILLE_FENETRE):
+            dataset[i][j] = sortie[cpt][0]
+            cpt = cpt+1
+
+        dataset[i][TAILLE_FENETRE] = sortie[cpt][1]
+
+    for i in range((SIZE1-TAILLE_FENETRE)+(SIZE2-TAILLE_FENETRE),(SIZE1-TAILLE_FENETRE)+(SIZE2-TAILLE_FENETRE)+(SIZE3-TAILLE_FENETRE)):
+        cpt = i
+        for j in range(TAILLE_FENETRE):
+            dataset[i][j] = sortie[cpt][0]
+            cpt = cpt+1
+
+        dataset[i][TAILLE_FENETRE] = sortie[cpt][1]
+
 
     data = dataset[0:dataset.shape[0],0:TAILLE_FENETRE]
     target = dataset[0:dataset.shape[0],TAILLE_FENETRE].astype(int)
@@ -167,7 +213,7 @@ def main():
     print(train_X[0:1])
 
     yep = 0 ;
-    for epoch in range(2):
+    for epoch in range(200):
         # Train with each example
         for i in range(len(train_X)):
             sess.run(updates, feed_dict={X: train_X[i: i + 1], y: train_y[i: i + 1]})
@@ -201,9 +247,9 @@ def main():
     #saver.save(sess, 'Graph/EEG/GAMMA/r_ear/r_ear')
 
     #saver.save(sess, 'Graph/LONG4/l_ear/l_ear')
-    #saver.save(sess, 'Graph/LONG/l_forehead/l_forehead')
-    #saver.save(sess, 'Graph/LONG/r_forehead/r_forehead')
-    #saver.save(sess, 'Graph/LONG/r_ear/r_ear')
+    #saver.save(sess, 'Graph/LONG4/l_forehead/l_forehead')
+    #saver.save(sess, 'Graph/LONG4/r_forehead/r_forehead')
+    saver.save(sess, 'Graph/LONG4/r_ear/r_ear')
     print(yep)
 
 if __name__ == '__main__':
@@ -216,33 +262,69 @@ if __name__ == '__main__':
     #my_data = genfromtxt('/home/hicham/Bureau/Stage/Dataset/dataset_1/datasetAssisMD2.csv', delimiter=';')
 
     SIZE = len(input_signal)
-    capteur = np.reshape(my_data[:,27:28].T, -1, 2)
+    capteur1 = np.reshape(my_data[:,27:28].T, -1, 2)
+    capteur2 = np.concatenate((capteur1, np.reshape(my_data2[:,27:28].T, -1, 2)), axis=0)
+    capteur = np.concatenate((capteur2, np.reshape(my_data3[:,27:28].T, -1, 2)), axis=0)
     for i in range(len(capteur)):
         if capteur[i] > 30:
             capteur[i] = ECHELLE_SORTIE
         else:
              capteur[i] = 0
 
-    sortie_Random = np.zeros((input_signal.shape[0],2))
-
+    sortie_Random = np.zeros((input_signal.shape[0]+input_signal2.shape[0]+input_signal3.shape[0],2))
     TAILLE_FENETRE = 70 # 16
-    output_signal_Random = signal.filtfilt(b, a, input_signal)
+    output_signal_Random  = signal.filtfilt(b, a, input_signal)
+    output_signal2_Random = signal.filtfilt(b, a, input_signal2)
+    output_signal3_Random = signal.filtfilt(b, a, input_signal3)
 
 
     for i in range(input_signal.shape[0]):
         sortie_Random[i][0] = output_signal_Random[i]
         if capteur[i] == ECHELLE_SORTIE:
             sortie_Random[i][1] = 1
+    j = 0
+    for i in range(input_signal.shape[0],input_signal2.shape[0]+input_signal.shape[0]):
+        sortie_Random[i][0] = output_signal2_Random[j]
+        if capteur[i] == ECHELLE_SORTIE:
+            sortie_Random[i][1] = 1
+        j=j+1
+
+    j = 0
+    for i in range(input_signal.shape[0]+input_signal2.shape[0], input_signal3.shape[0]+input_signal.shape[0]+input_signal2.shape[0]):
+        sortie_Random[i][0] = output_signal3_Random[j]
+        if capteur[i] == ECHELLE_SORTIE:
+            sortie_Random[i][1] = 1
+        j=j+1
 
 
-    dataset_RANDOM = np.zeros((input_signal.shape[0]-TAILLE_FENETRE, TAILLE_FENETRE+1)) # +1 pour la sortie desire
-    for i in range(SIZE-TAILLE_FENETRE):
+    dataset_RANDOM = np.zeros(((SIZE1-TAILLE_FENETRE)+(SIZE2-TAILLE_FENETRE)+(SIZE3-TAILLE_FENETRE), TAILLE_FENETRE+1)) # +1 pour la sortie desire
+
+    #cpt = 0
+    for i in range(SIZE1-TAILLE_FENETRE):
         cpt = i
         for j in range(TAILLE_FENETRE):
             dataset_RANDOM[i][j] = sortie_Random[cpt][0]
             cpt = cpt+1
 
         dataset_RANDOM[i][TAILLE_FENETRE] = sortie_Random[cpt][1]
+
+    for i in range((SIZE1-TAILLE_FENETRE),(SIZE1-TAILLE_FENETRE)+(SIZE2-TAILLE_FENETRE)):
+        cpt = i
+        for j in range(TAILLE_FENETRE):
+            dataset_RANDOM[i][j] = sortie_Random[cpt][0]
+            cpt = cpt+1
+
+        dataset_RANDOM[i][TAILLE_FENETRE] = sortie_Random[cpt][1]
+
+    for i in range((SIZE1-TAILLE_FENETRE)+(SIZE2-TAILLE_FENETRE),(SIZE1-TAILLE_FENETRE)+(SIZE2-TAILLE_FENETRE)+(SIZE3-TAILLE_FENETRE)):
+        cpt = i
+        for j in range(TAILLE_FENETRE):
+            dataset_RANDOM[i][j] = sortie_Random[cpt][0]
+            cpt = cpt+1
+
+        dataset_RANDOM[i][TAILLE_FENETRE] = sortie_Random[cpt][1]
+
+
 
     data = dataset_RANDOM[0:dataset_RANDOM.shape[0],0:TAILLE_FENETRE+1]
 
@@ -262,19 +344,35 @@ if __name__ == '__main__':
     #plt.plot(input_signal, label='Signal')
     plt.plot(output_signal_Random, label='Signal filtre')
 
-    print(prediction_de_la_mort)
     prediction_de_la_mort_qui_tue = [ECHELLE_PREDICTION if x==1 else x for x in prediction_de_la_mort_qui_tue]
     plt.plot(prediction_de_la_mort_qui_tue, label='Prediction')
 
-    sortie = np.zeros((input_signal.shape[0],2))
+    sortie = np.zeros((input_signal.shape[0]+input_signal2.shape[0]+input_signal3.shape[0],2))
 
-    # Sortie a predire
+    #sortie = capteur
     for i in range(input_signal.shape[0]):
         sortie[i][0] = output_signal_Random[i]
-
+        #print("yoooooooooooooooooooooooooooooooooooooooooooo",capteur[i])
         if capteur[i] == ECHELLE_SORTIE:
             sortie[i][1] = 1
+    j = 0
+    for i in range(input_signal.shape[0],input_signal2.shape[0]+input_signal.shape[0]):
+        sortie[i][0] = output_signal2_Random[j]
+        #print("yoooooooooooooooooooooooooooooooooooooooooooo",capteur[i])
+        if capteur[i] == ECHELLE_SORTIE:
+            sortie[i][1] = 1
+        j=j+1
+
+    j = 0
+    for i in range(input_signal.shape[0]+input_signal2.shape[0], input_signal3.shape[0]+input_signal.shape[0]+input_signal2.shape[0]):
+        sortie[i][0] = output_signal3_Random[j]
+        #print("yoooooooooooooooooooooooooooooooooooooooooooo",capteur[i])
+        if capteur[i] == ECHELLE_SORTIE:
+            sortie[i][1] = 1
+        j=j+1
+
     sortie[sortie == 1,] = ECHELLE_SORTIE
+
     sortie = np.delete(sortie, 0, 1)
     plt.plot(sortie,  label='Sortie')
     plt.legend(bbox_to_anchor=(0.88, 0.88), loc=3, borderaxespad=0.)
