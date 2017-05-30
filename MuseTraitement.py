@@ -12,24 +12,11 @@ import csv
 import tensorflow as tf
 from sklearn import datasets
 from sklearn.model_selection import train_test_split
-"""
-ser = serial.Serial("/dev/ttyACM0",timeout=1)
-print (ser)
+from random import randint
+import os
 
-dataset = open("datasetDeboutMD.csv", "w")
-# Initialisation du capteur main (vide la sortie)
-start_time = time.time()
-capteur = -1
-while (time.time() - start_time) < 2:
-    donnee=str(ser.readline())
-    try:
-        capteur = int(donnee)
-    except ValueError:
-        print("Error value ")
+clear = lambda: os.system('clear')
 
-    ser.flush()
-
-"""
 class MuseServer(ServerThread):
     #listen for messages on port 5000
     acc_x = -1
@@ -144,33 +131,37 @@ tf.set_random_seed(RANDOM_SEED)
 """""""""""""""""""""''''''""""""""""""""""""""""""
 """""""""""" MISE EN PLACE DES DONNEES """"""""""""
 """""""""""""""""""""''''''""""""""""""""""""""""""
+NB_DATA = 75
+input_signal = []
+sortie_signal = []
+for i in range(NB_DATA):
+    try:
+        my_data = genfromtxt("/home/hicham/Bureau/Stage/Dataset/dataset_stimulus/dataset_10ms/0/"+str(i)+".csv", delimiter=';')
+        sortie_signal.append(0)
+    except:
+        my_data = genfromtxt("/home/hicham/Bureau/Stage/Dataset/dataset_stimulus/dataset_10ms/1/"+str(i)+".csv", delimiter=';')
+        sortie_signal.append(1)
 
-my_data = genfromtxt('/home/hicham/Bureau/Stage/Dataset/dataset_1/datasetAssisMD.csv', delimiter=';')
-input_signal = np.reshape(my_data[:,1:2].T, -1, 2) # 2eme colonne
-capteur = np.reshape(my_data[:,27:28].T, -1, 2)
-capteur[capteur > 30] = 100
-capteur[capteur <= 30] = 0
-
-SIZE = len(input_signal)
+    input_signal.append(np.reshape(my_data[:,2:3].T, -1, 2))
+    #2:3 l_forehead 500 100 / 100
+    #11:12 theta_absolutel_forehead 92.54 / 62.5
+    #12:13 theta_absoluter_forehead   23000 98.51 / 75.00
+    #18:19 beta_absolutel_ear  27000 77.78% / 87.5
+    #23:24 gamma_absolutel_forehead 55000 85.07 / 87.5
 
 # Frequence d'echantillonnage fs=333.333 Hz
 # Filtre passe bande [1 10] Hz et d'ordre 4
+# ou [0.5 30]
 FiltreMin = 0.5
 FiltreMax = 30
 fs = 333.333
 Wn = [[2*FiltreMin/fs], [2*FiltreMax/fs]]
 
 # b, a = signal.butter(1, 10, 'low', analog=True)
-b, a = signal.butter(4,  Wn, 'bandpass')
-output_signal = signal.filtfilt(b, a, input_signal)
-
-sortie = np.zeros((input_signal.shape[0],2))
-
-for i in range(input_signal.shape[0]):
-    sortie[i][0] = output_signal[i]
-
-    if capteur[i] == 100:
-        sortie[i][1] = 1
+b, a = signal.butter(4, Wn, 'bandpass')
+output_signal = []
+for i in range(NB_DATA):
+    output_signal.append(signal.filtfilt(b, a, input_signal[i]))
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""
 """"""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -198,23 +189,20 @@ def get_data():
 
     #plt.show()
 
-    a = np.zeros((input_signal.shape[0],2))
+    a = np.zeros((NB_DATA,2))
     #print( "sortie = ",sortie[1:5])
 
     """ Creation des fenetres temporelles """
-    TAILLE_FENETRE = 70 # 16
+    global TAILLE_FENETRE
+    TAILLE_FENETRE = 185
+    dataset = np.zeros((NB_DATA, TAILLE_FENETRE+1)) # +1 pour la sortie desire
 
-    dataset = np.zeros((input_signal.shape[0]-TAILLE_FENETRE, TAILLE_FENETRE+1)) # +1 pour la sortie desire
-
-    #cpt = 0
-    for i in range(SIZE-TAILLE_FENETRE):
-        cpt = i
+    for i in range(NB_DATA):
         for j in range(TAILLE_FENETRE):
-            dataset[i][j] = sortie[cpt][0]
-            cpt = cpt+1
+            dataset[i][j] = output_signal[i][j]
+        dataset[i][TAILLE_FENETRE] = sortie_signal[i]
 
-        dataset[i][TAILLE_FENETRE] = sortie[cpt][1]
-
+    print("DATASET", dataset)
     data = dataset[0:dataset.shape[0],0:TAILLE_FENETRE]
     target = dataset[0:dataset.shape[0],TAILLE_FENETRE].astype(int)
 
@@ -237,7 +225,7 @@ def get_data():
 
     print(all_X.shape)
     print(all_Y.shape)
-    return train_test_split(all_X, all_Y, test_size=0.3, random_state=RANDOM_SEED)
+    return train_test_split(all_X, all_Y, train_size=0.9, test_size=0.1, random_state=RANDOM_SEED)
 
 def useModel(fenetre_a_predire, model):
     prediction = model.run(predict, feed_dict={X: fenetre_a_predire})[0]
@@ -248,7 +236,7 @@ def main():
 
     # Layer's sizes
     x_size = train_X.shape[1]   # Number of input nodes: 4 features and 1 bias
-    h_size = 70                # Number of hidden nodes
+    h_size = 185                # Number of hidden nodes
     y_size = train_y.shape[1]   # Number of outcomes (3 iris flowers)
 
     # Symbols
@@ -277,8 +265,8 @@ def main():
     tf.add_to_collection('vars', w_2)
 
     sess = tf.Session()
-    new_saver = tf.train.import_meta_graph("Graph/EEG/BETA/l_ear/l_ear.meta")
-    new_saver.restore(sess, tf.train.latest_checkpoint("./Graph/EEG/BETA/l_ear"))
+    new_saver = tf.train.import_meta_graph('Graph/STIMULUS/gamma_absolutel_forehead/gamma_absolutel_forehead.meta')
+    new_saver.restore(sess, tf.train.latest_checkpoint('./Graph/STIMULUS/gamma_absolutel_forehead'))
 
     plt.ion()
     plt.show()
@@ -287,45 +275,26 @@ def main():
     fenetre_a_predire = []
     output_signal_l_ear = []
     """ --- FILTRE --- """
-    FiltreMin = 1
-    FiltreMax = 10
+    FiltreMin = 0.5
+    FiltreMax = 30
     fs = 333.333
     Wn = [[2*FiltreMin/fs], [2*FiltreMax/fs]]
     b, a = signal.butter(4,  Wn, 'bandpass')
     """ -------------- """
-
+    """
     while 1:
     	#print(server.acc_x)
         print(i)
 
-    	time.sleep(0.05)
+    	time.sleep(0.001)
     	#donnee=str(ser.readline())
     	try:
-            """
-    		capteur = int(donnee)
-
-    		dataset.write(str(i)+";"+str(server.l_ear)+";"+str(server.l_forehead)+";"+str(server.r_forehead)+";"+str(server.r_ear)+";"+str(server.r_aux)+";"
-    			""+str(server.delta_absolutel_ear)+";"+str(server.delta_absolutel_forehead)+";"+str(server.delta_absoluter_forehead)+";"+str(server.delta_absoluter_ear)+";"
-    			""+str(server.theta_absolutel_ear)+";"+str(server.theta_absolutel_forehead)+";"+str(server.theta_absoluter_forehead)+";"+str(server.theta_absoluter_ear)+";"
-    			""+str(server.alpha_absolutel_ear)+";"+str(server.alpha_absolutel_forehead)+";"+str(server.alpha_absoluter_forehead)+";"+str(server.alpha_absoluter_ear)+";"
-    			""+str(server.beta_absolutel_ear)+";"+str(server.beta_absolutel_forehead)+";"+str(server.beta_absoluter_forehead)+";"+str(server.beta_absoluter_ear)+";"
-    			""+str(server.gamma_absolutel_ear)+";"+str(server.gamma_absolutel_forehead)+";"+str(server.gamma_absoluter_forehead)+";"+str(server.gamma_absoluter_ear)+";"
-    			""+str(server.dropped_samples)+";"
-    			""+str(capteur)+"\n")
-            """
-
-            """eeg.append(server.l_ear)
-            #eeg.append(server.l_forehead)
-            #eeg.append(server.r_forehead)
-            #eeg.append(server.r_ear)"""
-
-
-            TAILLE_FENETRE = 71
+            TAILLE_FENETRE = 185
             if i < TAILLE_FENETRE:
                 fenetre_a_predire.append(server.l_ear)
             else:
                 fenetre_a_predire = np.array(fenetre_a_predire)
-                fenetre_a_predire = fenetre_a_predire.reshape((1, TAILLE_FENETRE))
+                fenetre_a_predire = fenetre_a_predire.reshape((1, TAILLE_FENETRE+1))
 
                 output_signal_l_ear = signal.filtfilt(b, a, fenetre_a_predire)
                 print("Out",output_signal_l_ear)
@@ -343,7 +312,45 @@ def main():
     		print("Error value ", e)
 
     	#ser.flush()
+    """
+    """ ================================================================================================"""
+    numEnregistrement = 0
+    TAILLE_FENETRE = 186
+    while 1:
+        fenetre_a_predire = []
 
+        print ("Preparez-vous..")
+        time.sleep(5)
+
+        i=0
+        start_time = time.time()
+
+        afficheSignal = False
+        while (time.time() - start_time) < 2:
+            time.sleep(0.01) # 1ms
+
+            if i < TAILLE_FENETRE:
+            	fenetre_a_predire.append(server.gamma_absolutel_forehead)
+            	i+=1
+
+            #if ( afficheSignal == False):
+                #print((time.time() - start_time))
+            if (time.time() - start_time) > 0.2 and afficheSignal == False:
+                afficheSignal = True
+
+                print ("\033[32m Signal")
+
+
+        fenetre_a_predire = np.array(fenetre_a_predire)
+        print("TAILLE",len(fenetre_a_predire))
+        fenetre_a_predire = fenetre_a_predire.reshape((1, TAILLE_FENETRE))
+        output_signal_l_ear = signal.filtfilt(b, a, fenetre_a_predire)
+        print("Out",output_signal_l_ear)
+        prediction = useModel(output_signal_l_ear, sess)
+        print("Prediction",prediction)
+
+        clear()
+        numEnregistrement = numEnregistrement+1
 
 
 if __name__ == '__main__':

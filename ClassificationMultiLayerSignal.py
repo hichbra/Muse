@@ -99,7 +99,7 @@ def get_data():
     dataset = np.zeros((input_signal_l_ear.shape[0]-TAILLE_FENETRE, TAILLE_FENETRE+1)) # +1 pour la sortie desire
 
     data = sortie[:,0:8]
-
+    
     target = []
     for i in range(len(sortie)):
         target.append(sortie[i][8].astype(int))
