@@ -14,18 +14,18 @@ tf.set_random_seed(RANDOM_SEED)
 """""""""""""""""""""''''''""""""""""""""""""""""""
 """""""""""" MISE EN PLACE DES DONNEES """"""""""""
 """""""""""""""""""""''''''""""""""""""""""""""""""
-NB_DATA = 75
+NB_DATA = 90
 input_signal = []
 sortie_signal = []
 for i in range(NB_DATA):
     try:
-        my_data = genfromtxt("/home/hicham/Bureau/Stage/Dataset/dataset_stimulus/dataset_10ms/0/"+str(i)+".csv", delimiter=';')
+        my_data = genfromtxt("/home/hicham/Bureau/Stage/Dataset/dataset_stimulus/dataset/0/"+str(i)+".csv", delimiter=';')
         sortie_signal.append(0)
     except:
-        my_data = genfromtxt("/home/hicham/Bureau/Stage/Dataset/dataset_stimulus/dataset_10ms/1/"+str(i)+".csv", delimiter=';')
+        my_data = genfromtxt("/home/hicham/Bureau/Stage/Dataset/dataset_stimulus/dataset/1/"+str(i)+".csv", delimiter=';')
         sortie_signal.append(1)
 
-    input_signal.append(np.reshape(my_data[:,2:3].T, -1, 2))
+    input_signal.append(np.reshape(my_data[:,12:13].T, -1, 2))
     #2:3 l_forehead 500 100 / 100
     #11:12 theta_absolutel_forehead 92.54 / 62.5
     #12:13 theta_absoluter_forehead   23000 98.51 / 75.00
@@ -151,16 +151,16 @@ def main():
 
     # Run SGD
     sess = tf.Session()
-    new_saver = tf.train.import_meta_graph('Graph/STIMULUS/gamma_absolutel_forehead/gamma_absolutel_forehead.meta')
-    new_saver.restore(sess, tf.train.latest_checkpoint('./Graph/STIMULUS/gamma_absolutel_forehead'))
+    new_saver = tf.train.import_meta_graph('Graph/STIMULUS/theta_absoluter_forehead/theta_absoluter_forehead.meta')
+    new_saver.restore(sess, tf.train.latest_checkpoint('./Graph/STIMULUS/theta_absoluter_forehead'))
 
     ECHELLE_PREDICTION = 200
 
     #my_data = genfromtxt('/home/hicham/Bureau/Stage/Dataset/dataset_1/datasetAssisMD.csv', delimiter=';')
     sortie_signal = 1
-    my_data = genfromtxt("/home/hicham/Bureau/Stage/Dataset/dataset_stimulus/dataset_10ms/"+str(sortie_signal)+"/82.csv", delimiter=';')
+    my_data = genfromtxt("/home/hicham/Bureau/Stage/Dataset/dataset_stimulus/dataset/"+str(sortie_signal)+"/98.csv", delimiter=';')
 
-    input_signal_Random = np.reshape(my_data[:,23:24].T, -1, 2) # 2eme colonne
+    input_signal_Random = np.reshape(my_data[:,12:13].T, -1, 2) # 2eme colonne
     SIZE = len(input_signal_Random)
 
     sortie_Random = np.zeros((input_signal_Random.shape[0],2))

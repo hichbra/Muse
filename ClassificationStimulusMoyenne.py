@@ -21,7 +21,13 @@ tf.set_random_seed(RANDOM_SEED)
 # Gamma = 22 23
 #input_signal = np.reshape(my_data[:,1:2].T, -1, 2) # 2eme colonne
 NB_DATA = 90
+
 input_signal = []
+input_signal1 = []
+input_signal2 = []
+input_signal3 = []
+input_signal4 = []
+
 sortie_signal = []
 for i in range(NB_DATA):
     try:
@@ -31,7 +37,12 @@ for i in range(NB_DATA):
         my_data = genfromtxt("/home/hicham/Bureau/Stage/Dataset/dataset_stimulus/dataset/1/"+str(i)+".csv", delimiter=';')
         sortie_signal.append(1)
 
-    input_signal.append(np.reshape(my_data[:,12:13].T, -1, 2))
+    input_signal1.append(np.reshape(my_data[:,22:23].T, -1, 2))
+    input_signal2.append(np.reshape(my_data[:,23:24].T, -1, 2))
+    input_signal3.append(np.reshape(my_data[:,24:25].T, -1, 2))
+    input_signal4.append(np.reshape(my_data[:,25:26].T, -1, 2))
+    #input_signal.append(np.reshape(my_data[:,12:13].T, -1, 2))
+
     #2:3 l_forehead 500 100 / 100                       <==== 3
     #11:12 theta_absolutel_forehead 17000 92.54 / 62.5  <=== X
     #12:13 theta_absoluter_forehead   23000 98.51 / 75.00 <=== 4    \\ 42000 98.77 / 77.78
@@ -39,6 +50,21 @@ for i in range(NB_DATA):
     #23:24 gamma_absolutel_forehead 55000 85.07 / 87.5   <==== 1
 
     #14:15 alpha_absolutel_ear
+
+    # Delta moyenne -
+    # Theta moyenne 31800  95.52 / 75   \\ 64500 100 / 66.67
+    # Alpha moyenne 30000 98.51 / 75     \\ 58000 95.06 / 77.78
+    # Beta moyenne 29900 71.64 / 50     \\ -
+    # Gamma moyenne 10000 65.67 / 75    \\ 65000 81.48 / 88.89
+
+""" Moyenne de la wave """
+
+input_signal = np.zeros((len(input_signal4)+1, len(input_signal4[0])+2))
+for i in range(len(input_signal1)):
+    for j in range(len(input_signal1[i])):
+        input_signal[i][j] = (input_signal1[i][j]+input_signal2[i][j]+input_signal3[i][j]+input_signal4[i][j])/4
+        #print("input_signal",input_signal[i][j])
+
 
 # Frequence d'echantillonnage fs=333.333 Hz
 # Filtre passe bande [1 10] Hz et d'ordre 4
@@ -174,7 +200,7 @@ def main():
     print(train_X[0:1])
 
     yep = 0 ;
-    for epoch in range(42000):
+    for epoch in range(70000):
         # Train with each example
         for i in range(len(train_X)):
             sess.run(updates, feed_dict={X: train_X[i: i + 1], y: train_y[i: i + 1]})
